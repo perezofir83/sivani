@@ -658,18 +658,25 @@ async function downloadPdf() {
   const hideName = $("hideName").checked;
   const host = $("pdfHost");
   host.replaceChildren(buildPdfDoc(p, hideName, await getImages(p.id)));
-  await Promise.all([...host.querySelectorAll("img")].map((i) => i.decode().catch(() => {})));
+  // Wait until the photos are loaded, but never more than 3 seconds.
+  await Promise.all([...host.querySelectorAll("img")].map((i) => i.complete ? null : new Promise((ok) => {
+    i.onload = i.onerror = ok;
+    setTimeout(ok, 3000);
+  })));
   const who = hideName ? "מטופלת" : (p.fields.name || "מטופלת");
   const filename = "תיק-" + who.replace(/[\\/:*?"<>|]/g, "") + "-" + new Date().toISOString().slice(0, 10) + ".pdf";
   const btn = $("pdfBtn");
   btn.disabled = true;
   btn.textContent = "מכינה PDF…";
+  // html2canvas draws an empty page when the window is scrolled. Draw from the top, then go back.
+  const keepY = window.scrollY;
+  window.scrollTo(0, 0);
   try {
     const blob = await html2pdf()
       .set({
         margin: [12, 10, 12, 10],
         image: { type: "jpeg", quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         pagebreak: { mode: ["css"], avoid: [".pdf-field", "tr", ".pdf-sec-head", ".pdf-title", ".pdf-figure", ".pdf-label"] },
       })
@@ -686,6 +693,7 @@ async function downloadPdf() {
   } catch (e) {
     alert("לא הצלחתי ליצור PDF. נסי שוב.");
   } finally {
+    window.scrollTo(0, keepY);
     host.replaceChildren();
     btn.disabled = false;
     btn.textContent = "הורדת PDF";

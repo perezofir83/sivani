@@ -1,5 +1,5 @@
 // Keeps the app working without internet. Change VERSION after each update.
-const VERSION = "sivani-v3";
+const VERSION = "sivani-v4";
 const FILES = [
   "./", "index.html", "styles.css", "schema.js", "parser.js", "files.js", "app.js",
   "vendor/html2pdf.bundle.min.js", "vendor/pdf.min.js", "vendor/pdf.worker.min.js", "manifest.webmanifest",
