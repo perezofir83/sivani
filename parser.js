@@ -78,19 +78,21 @@ const ALIASES = LAB_TESTS
 const NUM = "\\d+(?:[.,]\\d+)?";
 const UNIT_RE = new RegExp(
   "(?<![A-Za-z])(" + [
-    "10\\s*[*^xX×]\\s*\\d+\\s*\\/\\s*[µuμ]?[lL]",
+    // OCR often reads the last "l" as "I", "|" or "1".
+    "10\\s*[*^xX×]\\s*\\d+\\s*\\/\\s*(?:[µuμ]|mic|mc)?[lLI|]",
     "ml\\/min(?:\\/1[.,]73\\s*m(?:²|2)?)?",
-    "[µuμnpm]?mol\\/l",
-    "mEq\\/l",
-    "[mµuμ]?I?U\\/m?l",
-    "[mnpµuμ]?g\\/[dm]?l",
+    "[µuμnpm]?mol\\/[lLI|1]",
+    "mEq\\/[lLI|1]",
+    "[mµuμ]?I?U\\/m?[lLI|1]",
+    "[mnpµuμ]?g\\/[dm]?[lLI|1]",
     "pg\\/cell",
     "k\\/[µuμ]l",
     "pg", "fl", "sec", "%",
   ].join("|") + ")(?![A-Za-z])",
   "i"
 );
-const RANGE_RE = new RegExp("(" + NUM + ")\\s*[-–—]\\s*(" + NUM + ")");
+// "70 - 100", or a dotted line as in Maccabi forms: "70 ······*·· 100".
+const RANGE_RE = new RegExp("(" + NUM + ")\\s*(?:[-–—]|[\\s.·•…*:_]{3,})\\s*(" + NUM + ")");
 const BLOCKED_NAME = /^(page|date|tel|phone|fax|id|dr|lab|mr|mrs|ms|ref|reference|range|result|results|unit|units|test|name|age|sex|time|sample|collected|printed|report)\b/i;
 
 function toNum(s) { return s.replace(",", "."); }
@@ -102,6 +104,9 @@ function cleanLine(line) {
     .replace(/\d{1,2}[./]\d{1,2}[./]\d{2,4}/g, " ")
     .replace(/\d{1,2}:\d{2}(:\d{2})?/g, " ")
     .replace(/\d{6,}/g, " ")
+    // OCR reads a dotted range line ("70 ·····*·· 100") as letters, e.g. "70 eeeeeen teen 100".
+    .replace(/(\d)\s*((?:[A-Za-z.,:;'`*|\[\]()™_~]{2,}\s*){1,3})(?=\d)/g, (m, d, junk) =>
+      /^[A-Za-z]{1,3}\s*$/.test(junk) ? m : d + " ····· ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -136,6 +141,11 @@ function parseValues(rest) {
     const plain = nums.find((n) => !/[<>]/.test(n)) || (low || high ? nums[0] : "");
     if (plain) { result = plain; nums.splice(nums.indexOf(plain), 1); }
   }
+  // Two numbers left and no range found: they are the range ("3 13 6.1%").
+  const plainLeft = nums.filter((n) => !/[<>]/.test(n)).map((n) => toNum(n.trim()));
+  if (!low && !high && plainLeft.length === 2 && parseFloat(plainLeft[0]) < parseFloat(plainLeft[1])) {
+    [low, high] = plainLeft;
+  }
   if (!low && !high) {
     for (const n of nums) {
       const m = n.match(/([<>])\s*(.+)/);
@@ -154,15 +164,17 @@ function parseLabLines(lines) {
   for (const raw of lines) {
     const line = cleanLine(raw);
     if (!line || !/\d/.test(line)) continue;
-    let name = null, defUnit = "", rest = line;
+    // The test name that starts first wins, so "MCH-Mean Cell Hemoglobin" is MCH.
+    // On the same place, the longer name wins ("Hemoglobin A1c" over "Hemoglobin").
+    let name = null, defUnit = "", rest = line, best = null;
     for (const a of ALIASES) {
       const m = line.match(a.re);
-      if (m) {
-        name = a.name;
-        defUnit = a.unit;
-        rest = line.slice(0, m.index) + " " + line.slice(m.index + m[0].length);
-        break;
-      }
+      if (m && (!best || m.index < best.m.index)) best = { a, m };
+    }
+    if (best) {
+      name = best.a.name;
+      defUnit = best.a.unit;
+      rest = line.slice(0, best.m.index) + " " + line.slice(best.m.index + best.m[0].length);
     }
     const v = parseValues(rest);
     if (!v.result) continue;
@@ -173,7 +185,7 @@ function parseLabLines(lines) {
     }
     if (!name) {
       // Unknown test: accept it only when it has a range and a Latin name.
-      if (!v.low && !v.high) continue;
+      if ((!v.low && !v.high) || !v.unit) continue;
       const words = v.rest.replace(/[<>]?\s*\d+(?:[.,]\d+)?/g, " ").match(/[A-Za-z][A-Za-z0-9 ()+\-./#%]*[A-Za-z0-9)%]/);
       if (!words) continue;
       name = words[0].trim();
