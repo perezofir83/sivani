@@ -10,7 +10,7 @@ A small Hebrew (RTL) web app for one therapist. She fills in an intake file for 
 4. Reads a lab form (PDF or photo) and fills the blood test table. The form is read on the device and is not saved. Only test name, result, unit and range are kept, never names, ID numbers or dates. She checks and corrects the values in a review window before they are added. Photos and scanned PDFs use OCR (tesseract.js, downloaded once from jsDelivr), and OCR can drop a decimal point.
 5. Shows all blood values and a separate box with abnormal values only: red when the result is above the range, blue when it is below the range.
 6. Stores images (resized JPEG) in IndexedDB, with an optional caption.
-7. Makes a PDF in the green design. An option hides the name and phone in the PDF.
+7. Makes a PDF in the green design through the browser print dialog ("Save as PDF"), so the PDF has real Hebrew text and clean page breaks. An option hides the name and phone in the PDF.
 8. Downloads a backup file (JSON, includes images) and loads it again on the same or another device.
 9. Works without internet after the first visit (service worker). She can add it to the home screen.
 
@@ -41,5 +41,4 @@ Open http://localhost:8790.
 - `files.js` – images in IndexedDB, reading PDF (pdf.js) and photos (OCR)
 - `styles.css` – design for screen and PDF
 - `sw.js`, `manifest.webmanifest`, `icons/` – offline use and home-screen icon
-- `vendor/html2pdf.bundle.min.js` – html2pdf.js 0.10.1 (MIT), makes the PDF in the browser
 - `vendor/pdf.min.js`, `vendor/pdf.worker.min.js` – pdf.js 3.11.174 (Apache 2.0), reads the text of lab PDFs

@@ -341,6 +341,14 @@ function renderBloodRow(p, row, i) {
 
 // ---------- Abnormal values ----------
 
+// "12.5 – 16", or "> 60" / "< 200" when the lab gives only one limit.
+function rangeText(r) {
+  if (r.low && r.high) return r.low + " – " + r.high;
+  if (r.low) return "> " + r.low;
+  if (r.high) return "< " + r.high;
+  return "";
+}
+
 function abnormalRows(p) {
   return p.blood.filter((r) => r.name && bloodFlag(r));
 }
@@ -374,7 +382,7 @@ function fillAbnormal(box, p) {
     arrow.textContent = flag === "high" ? "↑ גבוה" : "↓ נמוך";
     const txt = document.createElement("span");
     txt.className = "ltr";
-    const range = r.low || r.high ? "  (" + (r.low || "") + " – " + (r.high || "") + ")" : "";
+    const range = rangeText(r) ? "  (" + rangeText(r) + ")" : "";
     txt.textContent = r.name + ": " + r.result + " " + (r.unit || "") + range;
     line.append(arrow, txt);
     box.append(line);
@@ -562,17 +570,18 @@ function formatDate(v) {
 
 function pdfBloodTable(rows) {
   const table = el("table", "pdf-table");
+  const head = el("thead");
   const tr0 = el("tr");
   ["בדיקה", "תוצאה", "טווח תקין"].forEach((h) => tr0.append(el("th", null, h)));
-  table.append(tr0);
+  head.append(tr0);
+  table.append(head);
   for (const r of rows) {
     const tr = el("tr", bloodFlag(r));
     tr.append(el("td", "ltr", r.name));
     const res = el("td", "ltr");
     res.append(el("b", null, r.result + " "), document.createTextNode(r.unit || ""));
     tr.append(res);
-    const range = r.low || r.high ? (r.low || "") + " – " + (r.high || "") : "";
-    tr.append(el("td", "ltr", range));
+    tr.append(el("td", "ltr", rangeText(r)));
     table.append(tr);
   }
   return table;
@@ -663,41 +672,22 @@ async function downloadPdf() {
     i.onload = i.onerror = ok;
     setTimeout(ok, 3000);
   })));
+  // The browser prints the file as real text, so Hebrew and page breaks come out right.
+  // The page title becomes the name of the saved PDF file.
   const who = hideName ? "מטופלת" : (p.fields.name || "מטופלת");
-  const filename = "תיק-" + who.replace(/[\\/:*?"<>|]/g, "") + "-" + new Date().toISOString().slice(0, 10) + ".pdf";
-  const btn = $("pdfBtn");
-  btn.disabled = true;
-  btn.textContent = "מכינה PDF…";
-  // html2canvas draws an empty page when the window is scrolled. Draw from the top, then go back.
-  const keepY = window.scrollY;
-  window.scrollTo(0, 0);
-  try {
-    const blob = await html2pdf()
-      .set({
-        margin: [12, 10, 12, 10],
-        image: { type: "jpeg", quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css"], avoid: [".pdf-field", "tr", ".pdf-sec-head", ".pdf-title", ".pdf-figure", ".pdf-label"] },
-      })
-      .from(host.firstChild)
-      .outputPdf("blob");
-    const file = new File([blob], filename, { type: "application/pdf" });
-    // On a phone, the share sheet lets her save to Files or send in WhatsApp.
-    if (navigator.canShare && navigator.canShare({ files: [file] }) && matchMedia("(pointer: coarse)").matches) {
-      try { await navigator.share({ files: [file], title: filename }); }
-      catch (e) { if (e.name !== "AbortError") saveBlob(blob, filename); }
-    } else {
-      saveBlob(blob, filename);
-    }
-  } catch (e) {
-    alert("לא הצלחתי ליצור PDF. נסי שוב.");
-  } finally {
-    window.scrollTo(0, keepY);
+  const keepTitle = document.title;
+  document.title = "תיק-" + who.replace(/[\\/:*?"<>|]/g, "") + "-" + new Date().toISOString().slice(0, 10);
+  document.body.classList.add("printing");
+  const done = () => {
+    document.body.classList.remove("printing");
+    document.title = keepTitle;
     host.replaceChildren();
-    btn.disabled = false;
-    btn.textContent = "הורדת PDF";
-  }
+    window.removeEventListener("afterprint", done);
+  };
+  window.addEventListener("afterprint", done);
+  window.print();
+  // Some phones do not send "afterprint". Clean up when she comes back to the page.
+  setTimeout(() => { if (document.body.classList.contains("printing")) done(); }, 60000);
 }
 
 function saveBlob(blob, filename) {

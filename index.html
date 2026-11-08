@@ -44,12 +44,13 @@
       <div class="actions">
         <label class="check"><input id="hideName" type="checkbox"> להסתיר את השם בקובץ ה-PDF</label>
         <button id="pdfBtn" class="btn primary wide">הורדת PDF</button>
+        <p class="muted small">בחלון שנפתח, בחרי "שמירה כ-PDF" (במחשב) או "שיתוף" ואז "שמירה בקבצים" (בטלפון).</p>
         <button id="deleteBtn" class="btn danger">מחיקת התיק</button>
       </div>
     </section>
   </main>
 
-  <div id="pdfHost" aria-hidden="true"></div>
+  <div id="pdfHost"></div>
 
   <div id="reviewDialog" class="dialog" hidden>
     <div class="dialog-box" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
@@ -63,7 +64,6 @@
     </div>
   </div>
 
-  <script src="vendor/html2pdf.bundle.min.js"></script>
   <script src="schema.js"></script>
   <script src="parser.js"></script>
   <script src="files.js"></script>

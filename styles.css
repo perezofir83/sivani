@@ -158,7 +158,7 @@ main { max-width: 760px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
 .check input { width: 20px; height: 20px; }
 
 /* PDF layout. It is drawn off screen and turned into a PDF. */
-#pdfHost { position: fixed; top: 0; left: -10000px; }
+#pdfHost { display: none; }
 .pdf-doc {
   width: 720px;
   direction: rtl;
@@ -225,3 +225,19 @@ label.btn { cursor: pointer; }
 .review-head .rv-check { width: 20px; flex: none; }
 .review-head .rv-num { border: 0; text-align: center; }
 @media (max-width: 480px) { .review-head { display: none; } }
+
+/* Print = PDF. Only the file is printed, as real text. */
+@page { size: A4; margin: 14mm 12mm; }
+@media print {
+  body.printing > *:not(#pdfHost) { display: none !important; }
+  body.printing { background: #fff; }
+  body.printing #pdfHost { display: block; }
+  .pdf-doc { width: auto; font-size: 11pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .pdf-title { font-size: 18pt; }
+  .pdf-sec-head { font-size: 12pt; break-after: avoid; page-break-after: avoid; }
+  .pdf-label { break-after: avoid; page-break-after: avoid; }
+  .pdf-field, .pdf-table tr, .pdf-figure { break-inside: avoid; page-break-inside: avoid; }
+  .pdf-table thead { display: table-header-group; }
+  .pdf-figure img { max-height: 110mm; max-width: 100%; }
+  .pdf-small { font-size: 8.5pt; }
+}
