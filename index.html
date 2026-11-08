@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>תיקי מטופלות</title>
+  <meta name="theme-color" content="#2f5d50">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="תיקי מטופלות">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <button id="backBtn" class="icon-btn" hidden aria-label="חזרה לרשימה">→</button>
+    <h1 id="title">תיקי מטופלות</h1>
+    <span id="saveStatus" class="save-status" aria-live="polite"></span>
+  </header>
+
+  <main>
+    <!-- List view -->
+    <section id="listView">
+      <button id="newBtn" class="btn primary wide">+ מטופלת חדשה</button>
+      <input id="search" class="search" type="search" placeholder="חיפוש לפי שם">
+      <div id="backupWarn" class="warn" hidden></div>
+      <ul id="patientList" class="patient-list"></ul>
+      <p id="emptyMsg" class="muted center" hidden>עדיין אין תיקים. לחצי על "מטופלת חדשה".</p>
+
+      <div class="card backup">
+        <h2>גיבוי</h2>
+        <p class="muted">התיקים נשמרים רק במכשיר הזה. הורידי גיבוי פעם בשבוע ושמרי אותו במקום בטוח.</p>
+        <div class="row">
+          <button id="exportBtn" class="btn">הורדת גיבוי</button>
+          <label class="btn">טעינת גיבוי<input id="importInput" type="file" accept="application/json,.json" hidden></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Edit view -->
+    <section id="editView" hidden>
+      <form id="form" autocomplete="off"></form>
+      <div class="actions">
+        <label class="check"><input id="hideName" type="checkbox"> להסתיר את השם בקובץ ה-PDF</label>
+        <button id="pdfBtn" class="btn primary wide">הורדת PDF</button>
+        <button id="deleteBtn" class="btn danger">מחיקת התיק</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="pdfHost" aria-hidden="true"></div>
+
+  <script src="vendor/html2pdf.bundle.min.js"></script>
+  <script src="schema.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

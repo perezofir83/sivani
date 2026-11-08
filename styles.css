@@ -1,0 +1,185 @@
+:root {
+  --green: #2f5d50;
+  --green-soft: #e8f0ed;
+  --bg: #f6f7f5;
+  --card: #ffffff;
+  --text: #1f2a26;
+  --muted: #6b7772;
+  --line: #d9dfdc;
+  --high: #fde3d6;
+  --low: #dce8fa;
+  --danger: #b3261e;
+  --ok: #2e7d32;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Segoe UI", Arial, "Noto Sans Hebrew", sans-serif;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  background: var(--green);
+  color: #fff;
+}
+.topbar h1 { flex: 1; margin: 0; font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.save-status { font-size: 14px; white-space: nowrap; }
+.save-status.err { background: #fff; color: var(--danger); padding: 2px 8px; border-radius: 6px; font-weight: 700; }
+
+main { max-width: 760px; margin: 0 auto; padding: 16px; padding-bottom: 60px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--green);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--green);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+.btn.primary { background: var(--green); color: #fff; font-weight: 600; }
+.btn.danger { border-color: var(--danger); color: var(--danger); }
+.btn.wide { width: 100%; }
+.btn:disabled { opacity: .6; }
+.icon-btn { background: none; border: 0; color: inherit; font-size: 24px; cursor: pointer; padding: 0 6px; min-width: 36px; min-height: 36px; }
+
+.row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+.center { text-align: center; }
+
+.search {
+  width: 100%;
+  margin: 14px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  background: #fff;
+}
+
+.warn { background: #fff4d6; border: 1px solid #f0d58a; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; }
+
+.patient-list { list-style: none; padding: 0; margin: 0; }
+.patient {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-bottom: 8px;
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+.patient .muted { font-size: 14px; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-top: 24px; }
+.card h2 { margin: 0 0 4px; font-size: 17px; color: var(--green); }
+.card p { margin: 0; font-size: 15px; }
+
+/* Form */
+.section {
+  margin: 0 0 18px;
+  padding: 0 14px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.section legend {
+  background: var(--green);
+  color: #fff;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 8px;
+}
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin-top: 10px; }
+.stack { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+@media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field span { font-size: 14px; font-weight: 600; color: var(--green); }
+.field input, .field textarea, .blood-row input {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  background: #fbfcfb;
+  color: var(--text);
+}
+.field textarea { resize: vertical; min-height: 64px; overflow: hidden; }
+.field input:focus, .field textarea:focus, .blood-row input:focus { outline: 2px solid var(--green); border-color: transparent; background: #fff; }
+
+.blood { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.blood-rows { display: flex; flex-direction: column; gap: 6px; }
+.blood-row {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr 1fr 1fr 36px;
+  gap: 6px;
+  align-items: center;
+  padding: 4px;
+  border-radius: 8px;
+}
+.blood-row input { padding: 7px 8px; direction: ltr; text-align: left; font-size: 15px; }
+.blood-row.high { background: var(--high); }
+.blood-row.low { background: var(--low); }
+.blood-row .del { color: var(--muted); }
+@media (max-width: 560px) {
+  .blood-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .blood-row .name { grid-column: 1 / 4; }
+  .blood-row .del { grid-column: 4; grid-row: 1; justify-self: end; }
+}
+
+.actions { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.check { display: flex; gap: 8px; align-items: center; }
+.check input { width: 20px; height: 20px; }
+
+/* PDF layout. It is drawn off screen and turned into a PDF. */
+#pdfHost { position: fixed; top: 0; left: -10000px; }
+.pdf-doc {
+  width: 720px;
+  direction: rtl;
+  background: #fff;
+  color: #1f2a26;
+  font-family: Arial, "Noto Sans Hebrew", sans-serif;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.pdf-title { color: var(--green); font-size: 22px; margin: 0 0 14px; }
+.pdf-sec { margin-bottom: 14px; }
+.pdf-sec-head { background: var(--green); color: #fff; font-size: 14px; margin: 0 0 8px; padding: 6px 12px; border-radius: 6px; }
+.pdf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 30px; padding: 0 12px; }
+.pdf-field { padding: 0 12px; }
+.pdf-grid .pdf-field { padding: 0; }
+.pdf-label { color: var(--green); font-size: 12px; margin: 6px 0 1px; }
+.pdf-text { margin: 0; white-space: pre-wrap; }
+.pdf-small { color: #6b7772; font-size: 10px; margin: 2px 0; }
+.pdf-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+.pdf-table th { text-align: right; color: #6b7772; font-weight: 400; font-size: 10px; border-bottom: 1px solid var(--line); padding: 3px 8px; }
+.pdf-table td { border-bottom: 1px solid #e6eae8; padding: 3px 8px; }
+.pdf-table td.ltr { direction: ltr; text-align: right; }
+.pdf-table tr.high td { background: var(--high); }
+.pdf-table tr.low td { background: var(--low); }

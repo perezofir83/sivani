@@ -1,0 +1,5 @@
+.DS_Store
+# Never commit patient data
+*.pdf
+גיבוי-*.json
+backup*.json
