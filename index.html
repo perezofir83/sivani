@@ -51,8 +51,22 @@
 
   <div id="pdfHost" aria-hidden="true"></div>
 
+  <div id="reviewDialog" class="dialog" hidden>
+    <div class="dialog-box" role="dialog" aria-modal="true" aria-labelledby="reviewTitle">
+      <h2 id="reviewTitle">ערכים שנמצאו בטופס</h2>
+      <p class="muted small">הקובץ עצמו לא נשמר. נשמרים רק שם הבדיקה, התוצאה, היחידה והטווח. בדקי כל מספר מול הטופס ותקני אם צריך. בצילום, נקודה עשרונית נופלת לפעמים (למשל 2.1 הופך ל-21). בטלי סימון של שורה שלא שייכת.</p>
+      <div id="reviewRows" class="review-rows"></div>
+      <div class="row">
+        <button id="reviewOk" class="btn primary">הוספה לטבלה</button>
+        <button id="reviewCancel" class="btn">ביטול</button>
+      </div>
+    </div>
+  </div>
+
   <script src="vendor/html2pdf.bundle.min.js"></script>
   <script src="schema.js"></script>
+  <script src="parser.js"></script>
+  <script src="files.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

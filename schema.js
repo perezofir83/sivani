@@ -44,8 +44,9 @@ const SCHEMA = [
     fields: [["tests", "בדיקות"]],
   },
   { id: "blood", title: "ז. בדיקות דם", type: "blood" },
+  { id: "images", title: "ח. תמונות", type: "images" },
   {
-    id: "summary", title: "ח. סיכום והמלצות", type: "long",
+    id: "summary", title: "ט. סיכום והמלצות", type: "long",
     fields: [["assessment", "התרשמות"], ["plan", "תוכנית טיפול והמלצות"], ["followup", "מעקב"]],
   },
 ];

@@ -3,3 +3,4 @@
 *.pdf
 גיבוי-*.json
 backup*.json
+_test/

@@ -157,6 +157,8 @@ function renderForm() {
     box.append(head);
     if (sec.type === "blood") {
       box.append(renderBlood(p));
+    } else if (sec.type === "images") {
+      box.append(renderImages(p));
     } else {
       const wrap = document.createElement("div");
       wrap.className = sec.type === "grid" ? "grid" : "stack";
@@ -231,9 +233,29 @@ function renderBlood(p) {
   dateLab.append(dateSpan, dateIn);
   wrap.append(dateLab);
 
+  const upload = document.createElement("label");
+  upload.className = "btn primary";
+  upload.textContent = "העלאת טופס בדיקות (PDF או צילום)";
+  const fileIn = document.createElement("input");
+  fileIn.type = "file";
+  fileIn.accept = "application/pdf,.pdf,image/*";
+  fileIn.hidden = true;
+  const uploadStatus = document.createElement("p");
+  uploadStatus.className = "muted small";
+  uploadStatus.textContent = "הטופס נקרא במכשיר בלבד ולא נשמר. נשמרים רק הערכים, בלי שם, ת״ז או תאריך לידה.";
+  fileIn.onchange = () => {
+    const f = fileIn.files[0];
+    fileIn.value = "";
+    if (f) uploadLabForm(p, f, uploadStatus);
+  };
+  upload.append(fileIn);
+  wrap.append(upload, uploadStatus);
+
+  wrap.append(renderAbnormal(p));
+
   const legend = document.createElement("p");
   legend.className = "muted small";
-  legend.textContent = "כתבי תוצאה וטווח תקין. ערך מעל הטווח מסומן באדום, ערך מתחת לטווח מסומן בכחול.";
+  legend.textContent = "כל הערכים. אפשר לתקן כל ערך. ערך מעל הטווח מסומן באדום, ערך מתחת לטווח מסומן בכחול.";
   wrap.append(legend);
 
   const rows = document.createElement("div");
@@ -302,6 +324,7 @@ function renderBloodRow(p, row, i) {
     input.addEventListener("input", () => {
       row[key] = input.value;
       div.className = "blood-row " + bloodFlag(row);
+      refreshAbnormal(p);
       scheduleSave();
     });
     div.append(input);
@@ -314,6 +337,212 @@ function renderBloodRow(p, row, i) {
   del.onclick = () => { p.blood.splice(i, 1); scheduleSave(); renderForm(); };
   div.append(del);
   return div;
+}
+
+// ---------- Abnormal values ----------
+
+function abnormalRows(p) {
+  return p.blood.filter((r) => r.name && bloodFlag(r));
+}
+
+function renderAbnormal(p) {
+  const box = document.createElement("div");
+  box.id = "abnormalBox";
+  fillAbnormal(box, p);
+  return box;
+}
+
+function refreshAbnormal(p) {
+  const box = $("abnormalBox");
+  if (box) fillAbnormal(box, p);
+}
+
+function fillAbnormal(box, p) {
+  const list = abnormalRows(p);
+  box.replaceChildren();
+  box.className = "abnormal";
+  box.hidden = p.blood.every((r) => String(r.result).trim() === "");
+  const h = document.createElement("h3");
+  h.textContent = list.length ? "ערכים חריגים (" + list.length + ")" : "אין ערכים חריגים";
+  box.append(h);
+  for (const r of list) {
+    const flag = bloodFlag(r);
+    const line = document.createElement("div");
+    line.className = "abn-line " + flag;
+    const arrow = document.createElement("span");
+    arrow.className = "arrow";
+    arrow.textContent = flag === "high" ? "↑ גבוה" : "↓ נמוך";
+    const txt = document.createElement("span");
+    txt.className = "ltr";
+    const range = r.low || r.high ? "  (" + (r.low || "") + " – " + (r.high || "") + ")" : "";
+    txt.textContent = r.name + ": " + r.result + " " + (r.unit || "") + range;
+    line.append(arrow, txt);
+    box.append(line);
+  }
+}
+
+// ---------- Lab form upload ----------
+
+async function uploadLabForm(p, file, statusEl) {
+  const say = (t) => { statusEl.textContent = t; };
+  try {
+    const lines = await readLabFile(file, say);
+    const found = parseLabLines(lines);
+    if (!found.length) {
+      say("לא מצאתי ערכים בטופס. אפשר להקליד אותם בטבלה.");
+      return;
+    }
+    say("נמצאו " + found.length + " ערכים. בדקי ואשרי.");
+    const chosen = await reviewFound(found);
+    if (!chosen) { say("בוטל. שום דבר לא נוסף."); return; }
+    let added = 0, updated = 0;
+    for (const f of chosen) {
+      const mine = p.blood.find((r) => r.name.toLowerCase() === f.name.toLowerCase());
+      if (mine) {
+        Object.assign(mine, { result: f.result, unit: f.unit || mine.unit, low: f.low || mine.low, high: f.high || mine.high });
+        updated++;
+      } else {
+        p.blood.push(f);
+        added++;
+      }
+    }
+    flushSave();
+    renderForm();
+    const box = $("abnormalBox");
+    if (box) box.scrollIntoView({ behavior: "smooth", block: "start" });
+    setStatus("נוספו " + added + ", עודכנו " + updated + " ✓", "ok");
+  } catch (e) {
+    say("לא הצלחתי לקרוא את הקובץ. אפשר להקליד את הערכים בטבלה.");
+  }
+}
+
+// Shows the found values. She removes rows that do not belong. Returns the chosen rows or null.
+function reviewFound(found) {
+  return new Promise((resolve) => {
+    const dlg = $("reviewDialog");
+    const list = $("reviewRows");
+    list.replaceChildren();
+    const head = document.createElement("div");
+    head.className = "review-row review-head";
+    for (const t of ["", "בדיקה", "תוצאה", "מ-", "עד"]) {
+      const s = document.createElement("span");
+      s.textContent = t;
+      s.className = t === "" ? "rv-check" : t === "בדיקה" ? "rv-name" : "rv-num";
+      head.append(s);
+    }
+    list.append(head);
+    const checks = found.map((f) => {
+      const row = document.createElement("div");
+      row.className = "review-row " + bloodFlag(f);
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = true;
+      cb.setAttribute("aria-label", "להוסיף את " + f.name);
+      const name = document.createElement("span");
+      name.className = "ltr rv-name";
+      name.textContent = f.name + (f.unit ? " (" + f.unit + ")" : "");
+      row.append(cb, name);
+      for (const [key, ph] of [["result", "תוצאה"], ["low", "מ-"], ["high", "עד"]]) {
+        const input = document.createElement("input");
+        input.className = "rv-num";
+        input.inputMode = "decimal";
+        input.placeholder = ph;
+        input.setAttribute("aria-label", ph);
+        input.value = f[key] || "";
+        input.addEventListener("input", () => {
+          f[key] = input.value;
+          row.className = "review-row " + bloodFlag(f);
+        });
+        row.append(input);
+      }
+      list.append(row);
+      return cb;
+    });
+    dlg.hidden = false;
+    const done = (ok) => {
+      dlg.hidden = true;
+      $("reviewOk").onclick = $("reviewCancel").onclick = null;
+      resolve(ok ? found.filter((_, i) => checks[i].checked) : null);
+    };
+    $("reviewOk").onclick = () => done(true);
+    $("reviewCancel").onclick = () => done(false);
+  });
+}
+
+// ---------- Images ----------
+
+function renderImages(p) {
+  const wrap = document.createElement("div");
+  wrap.className = "images";
+  const add = document.createElement("label");
+  add.className = "btn";
+  add.textContent = "+ הוספת תמונות";
+  const fileIn = document.createElement("input");
+  fileIn.type = "file";
+  fileIn.accept = "image/*";
+  fileIn.multiple = true;
+  fileIn.hidden = true;
+  add.append(fileIn);
+  const grid = document.createElement("div");
+  grid.className = "image-grid";
+  wrap.append(add, grid);
+
+  const patientId = p.id;
+  const draw = async () => {
+    const list = await getImages(patientId);
+    if (currentId !== patientId) return;
+    grid.replaceChildren();
+    for (const img of list) grid.append(renderImageCard(img, draw));
+  };
+  fileIn.onchange = async () => {
+    const files = [...fileIn.files];
+    fileIn.value = "";
+    setStatus("שומר תמונות…", "");
+    try {
+      for (const f of files) {
+        const data = await resizeImage(f);
+        await putImage({ id: newId(), patientId, data, caption: "", created: new Date().toISOString() });
+      }
+      p.updated = new Date().toISOString();
+      persist();
+      await draw();
+    } catch (e) {
+      setStatus("תמונה לא נשמרה! נסי שוב", "err");
+    }
+  };
+  draw();
+  return wrap;
+}
+
+function renderImageCard(img, redraw) {
+  const card = document.createElement("div");
+  card.className = "image-card";
+  const pic = document.createElement("img");
+  pic.src = img.data;
+  pic.alt = img.caption || "תמונה";
+  const cap = document.createElement("input");
+  cap.placeholder = "תיאור (לא חובה)";
+  cap.value = img.caption || "";
+  let t = null;
+  cap.addEventListener("input", () => {
+    setStatus("שומר…", "");
+    clearTimeout(t);
+    t = setTimeout(() => {
+      img.caption = cap.value;
+      putImage(img).then(() => setStatus("נשמר ✓", "ok"), () => setStatus("לא נשמר!", "err"));
+    }, 300);
+  });
+  const del = document.createElement("button");
+  del.type = "button";
+  del.className = "btn danger small-btn";
+  del.textContent = "מחיקה";
+  del.onclick = async () => {
+    if (!confirm("למחוק את התמונה?")) return;
+    await deleteImage(img.id);
+    redraw();
+  };
+  card.append(pic, cap, del);
+  return card;
 }
 
 // ---------- PDF ----------
@@ -331,12 +560,45 @@ function formatDate(v) {
   return isNaN(d) ? v : d.toLocaleDateString("he-IL");
 }
 
-function buildPdfDoc(p, hideName) {
+function pdfBloodTable(rows) {
+  const table = el("table", "pdf-table");
+  const tr0 = el("tr");
+  ["בדיקה", "תוצאה", "טווח תקין"].forEach((h) => tr0.append(el("th", null, h)));
+  table.append(tr0);
+  for (const r of rows) {
+    const tr = el("tr", bloodFlag(r));
+    tr.append(el("td", "ltr", r.name));
+    const res = el("td", "ltr");
+    res.append(el("b", null, r.result + " "), document.createTextNode(r.unit || ""));
+    tr.append(res);
+    const range = r.low || r.high ? (r.low || "") + " – " + (r.high || "") : "";
+    tr.append(el("td", "ltr", range));
+    table.append(tr);
+  }
+  return table;
+}
+
+function buildPdfDoc(p, hideName, images) {
   const doc = el("div", "pdf-doc");
   const name = hideName ? "" : (p.fields.name || "");
   doc.append(el("h1", "pdf-title", name ? "תיק מטופלת – " + name : "תיק מטופלת"));
 
   for (const sec of SCHEMA) {
+    if (sec.type === "images") {
+      if (!images.length) continue;
+      const s = el("section", "pdf-sec");
+      s.append(el("h2", "pdf-sec-head", sec.title));
+      for (const img of images) {
+        const f = el("figure", "pdf-figure");
+        const pic = el("img");
+        pic.src = img.data;
+        f.append(pic);
+        if (img.caption) f.append(el("figcaption", "pdf-small", img.caption));
+        s.append(f);
+      }
+      doc.append(s);
+      continue;
+    }
     if (sec.type === "blood") {
       const filled = p.blood.filter((r) => r.name && String(r.result).trim() !== "");
       if (!filled.length && !p.bloodNotes) continue;
@@ -344,21 +606,11 @@ function buildPdfDoc(p, hideName) {
       s.append(el("h2", "pdf-sec-head", sec.title));
       if (p.fields["blood.date"]) s.append(el("p", "pdf-small", "תאריך הבדיקות: " + formatDate(p.fields["blood.date"])));
       if (filled.length) {
-        const table = el("table", "pdf-table");
-        const tr0 = el("tr");
-        ["בדיקה", "תוצאה", "טווח תקין"].forEach((h) => tr0.append(el("th", null, h)));
-        table.append(tr0);
-        for (const r of filled) {
-          const tr = el("tr", bloodFlag(r));
-          tr.append(el("td", "ltr", r.name));
-          const res = el("td", "ltr");
-          res.append(el("b", null, r.result + " "), document.createTextNode(r.unit || ""));
-          tr.append(res);
-          const range = r.low || r.high ? (r.low || "") + " – " + (r.high || "") : "";
-          tr.append(el("td", "ltr", range));
-          table.append(tr);
-        }
-        s.append(table);
+        const abn = abnormalRows(p).filter((r) => String(r.result).trim() !== "");
+        s.append(el("h3", "pdf-label", abn.length ? "ערכים חריגים (" + abn.length + ")" : "אין ערכים חריגים"));
+        if (abn.length) s.append(pdfBloodTable(abn));
+        s.append(el("h3", "pdf-label", "כל הערכים"));
+        s.append(pdfBloodTable(filled));
         s.append(el("p", "pdf-small", "אדום: מעל הטווח. כחול: מתחת לטווח."));
       }
       if (p.bloodNotes) {
@@ -405,7 +657,8 @@ async function downloadPdf() {
   const p = patients[currentId];
   const hideName = $("hideName").checked;
   const host = $("pdfHost");
-  host.replaceChildren(buildPdfDoc(p, hideName));
+  host.replaceChildren(buildPdfDoc(p, hideName, await getImages(p.id)));
+  await Promise.all([...host.querySelectorAll("img")].map((i) => i.decode().catch(() => {})));
   const who = hideName ? "מטופלת" : (p.fields.name || "מטופלת");
   const filename = "תיק-" + who.replace(/[\\/:*?"<>|]/g, "") + "-" + new Date().toISOString().slice(0, 10) + ".pdf";
   const btn = $("pdfBtn");
@@ -418,7 +671,7 @@ async function downloadPdf() {
         image: { type: "jpeg", quality: 0.95 },
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["css"], avoid: [".pdf-field", "tr", ".pdf-sec-head", ".pdf-title"] },
+        pagebreak: { mode: ["css"], avoid: [".pdf-field", "tr", ".pdf-sec-head", ".pdf-title", ".pdf-figure", ".pdf-label"] },
       })
       .from(host.firstChild)
       .outputPdf("blob");
@@ -452,8 +705,9 @@ function saveBlob(blob, filename) {
 
 // ---------- Backup ----------
 
-function exportBackup() {
-  const data = JSON.stringify({ app: "sivani", version: 1, exported: new Date().toISOString(), patients }, null, 2);
+async function exportBackup() {
+  const images = await getAllImages();
+  const data = JSON.stringify({ app: "sivani", version: 2, exported: new Date().toISOString(), patients, images });
   saveBlob(new Blob([data], { type: "application/json" }), "גיבוי-תיקים-" + new Date().toISOString().slice(0, 10) + ".json");
   localStorage.setItem(BACKUP_KEY, new Date().toISOString());
   renderBackupWarning();
@@ -461,7 +715,7 @@ function exportBackup() {
 
 function importBackup(file) {
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const data = JSON.parse(reader.result);
       if (data.app !== "sivani" || typeof data.patients !== "object") throw new Error("bad file");
@@ -473,9 +727,13 @@ function importBackup(file) {
         else if (p.updated > mine.updated) { patients[p.id] = p; updated++; }
       }
       persist();
+      let pics = 0;
+      for (const img of data.images || []) {
+        if (img && img.id && img.patientId && img.data) { await putImage(img); pics++; }
+      }
       setStatus("", "");
       renderList();
-      alert("הגיבוי נטען. נוספו " + added + " תיקים, עודכנו " + updated + ".");
+      alert("הגיבוי נטען. נוספו " + added + " תיקים, עודכנו " + updated + ", נטענו " + pics + " תמונות.");
     } catch (e) {
       alert("הקובץ הזה הוא לא גיבוי של תיקי מטופלות.");
     }
@@ -500,6 +758,7 @@ $("deleteBtn").onclick = () => {
   const p = patients[currentId];
   const name = p.fields.name || "ללא שם";
   if (!confirm("למחוק את התיק של " + name + "? אי אפשר לבטל את זה.")) return;
+  deleteImagesOf(currentId);
   delete patients[currentId];
   currentId = null;
   persist();
